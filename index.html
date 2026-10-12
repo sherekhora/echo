@@ -300,6 +300,15 @@
       .panel, .stage { position: static; }
       .panel.second { grid-column: 1; }
     }
+
+    .export-row { display: flex; gap: 8px; }
+    .export-row button {
+      flex: 1; font: inherit; font-family: "IBM Plex Mono", monospace; font-size: 12px;
+      padding: 8px 10px; background: var(--card); color: var(--ink);
+      border: 1px solid var(--ink); border-radius: 0; cursor: pointer;
+    }
+    .export-row button:hover { background: var(--ink); color: var(--paper); }
+    .export-row button.rec { background: var(--accent); border-color: var(--accent); color: #fff; }
   </style>
 </head>
 
@@ -511,8 +520,67 @@
           <output id="deform-val"></output>
         </div>
       </fieldset>
+
+      <fieldset>
+        <legend>Експорт</legend>
+        <div class="ctrl export-row">
+          <button type="button" id="exportJpg">зберегти JPG</button>
+          <button type="button" id="recBtn">● запис відео</button>
+        </div>
+        <div class="ctrl"><output id="recStatus"></output></div>
+      </fieldset>
     </aside>
 
   </div>
+
+  <script>
+    (function () {
+      var rec = null, chunks = [], t0 = 0, timer = null;
+      var $ = function (id) { return document.getElementById(id); };
+      function cvs() { return document.querySelector('#holder canvas'); }
+      function stamp() {
+        var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+        return '7lives-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+      }
+      function download(blob, name) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      }
+      $('exportJpg').addEventListener('click', function () {
+        var c = cvs(); if (!c) return;
+        c.toBlob(function (b) { if (b) download(b, stamp() + '.jpg'); }, 'image/jpeg', 0.95);
+      });
+      function pickMime() {
+        var list = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+        for (var i = 0; i < list.length; i++) if (window.MediaRecorder && MediaRecorder.isTypeSupported(list[i])) return list[i];
+        return '';
+      }
+      function stop() { if (rec && rec.state !== 'inactive') rec.stop(); }
+      $('recBtn').addEventListener('click', function () {
+        var btn = this, st = $('recStatus');
+        if (rec && rec.state === 'recording') { stop(); return; }
+        var c = cvs();
+        if (!c || !c.captureStream || !window.MediaRecorder) { st.textContent = 'запис не підтримується цим браузером'; return; }
+        var mime = pickMime();
+        chunks = [];
+        rec = new MediaRecorder(c.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 12000000 } : { videoBitsPerSecond: 12000000 });
+        rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+        rec.onstop = function () {
+          clearInterval(timer);
+          btn.classList.remove('rec'); btn.textContent = '● запис відео';
+          var type = rec.mimeType || mime || 'video/webm';
+          var ext = type.indexOf('mp4') > -1 ? 'mp4' : 'webm';
+          download(new Blob(chunks, { type: type }), stamp() + '.' + ext);
+          st.textContent = 'збережено .' + ext;
+        };
+        rec.start(1000);
+        t0 = Date.now();
+        btn.classList.add('rec'); btn.textContent = '■ стоп';
+        timer = setInterval(function () { st.textContent = 'запис ' + Math.round((Date.now() - t0) / 1000) + ' с'; }, 500);
+      });
+    })();
+  </script>
 </body>
 </html>
