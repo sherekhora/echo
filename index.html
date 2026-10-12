@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- PLEASE NO CHANGES BELOW THIS LINE (UNTIL I SAY SO) -->
+  <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+  <script language="javascript" type="text/javascript" src="sketch_260826d.js"></script>
+  <!-- OK, YOU CAN MAKE CHANGES BELOW THIS LINE AGAIN -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --paper:   #F4F2EE;
+      --card:    #FFFFFF;
+      --ink:     #16181A;
+      --muted:   #7C7F84;
+      --rule:    #DEDAD2;
+      --accent:  #E0231A;
+      --accent2: #0050FF;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px 310px;
+      gap: 24px;
+      padding: 28px;
+      align-items: start;
+      min-height: 100vh;
+    }
+
+    /* ---------------- сцена ---------------- */
+
+    .stage {
+      min-width: 0;
+      position: sticky;
+      top: 28px;
+      align-self: start;
+    }
+
+    /* обмежуємо і по ширині колонки, і по висоті вікна — що спрацює
+       першим. width:auto лишає власну пропорцію канваса недоторканою */
+    #holder canvas {
+      display: block;
+      width: auto !important;
+      height: auto !important;
+      max-width: 100%;
+      max-height: calc(100vh - 120px);
+      border: 1px solid var(--rule);
+      background: #000;
+    }
+
+    .legend {
+      display: flex;
+      gap: 20px;
+      margin-top: 12px;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 7px; }
+    .swatch { width: 16px; height: 3px; border-radius: 2px; }
+    .swatch.frame { background: var(--accent); }
+    .swatch.gen   { background: var(--accent2); }
+
+    /* ---------------- панель ---------------- */
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      padding: 20px 18px 22px;
+      position: sticky;
+      top: 28px;
+      align-self: start;
+    }
+    /* друга панель найдовша — саме вона й прогортується */
+    .panel.second { position: static; }
+
+    .title {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .title b {
+      display: block;
+      margin-top: 5px;
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
+      color: var(--ink);
+    }
+
+    fieldset {
+      border: 0;
+      border-top: 1px solid var(--rule);
+      margin: 22px 0 0;
+      padding: 14px 0 0;
+    }
+    .panel > fieldset:first-of-type { margin-top: 0; }
+
+    legend {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 8px 0 0;
+    }
+
+    .ctrl {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr) 46px;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 9px;
+    }
+    .ctrl label { font-size: 13px; }
+    .ctrl output {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      text-align: right;
+      color: var(--muted);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 2px;
+      background: var(--rule);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: var(--ink);
+      cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 13px; height: 13px;
+      border: 0; border-radius: 50%;
+      background: var(--ink);
+      cursor: pointer;
+    }
+    input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+    select {
+      width: 100%;
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 12px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      padding: 4px 6px;
+      cursor: pointer;
+    }
+    select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    textarea {
+      width: 100%;
+      min-height: 72px;
+      white-space: pre;
+      overflow-wrap: normal;
+      overflow-x: auto;
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      padding: 6px 7px;
+      resize: vertical;
+    }
+    textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .col { margin-bottom: 16px; }
+    .col-head {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .col-num {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      letter-spacing: .1em;
+      color: var(--muted);
+    }
+    .col-meta { font-size: 11px; color: var(--muted); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .metrics span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .metrics input[type=text] {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 12px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .metrics input {
+      width: 100%;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      padding: 3px 5px;
+    }
+
+    .row-color {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 6px;
+    }
+    .row-color label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    input[type=color] {
+      width: 26px;
+      height: 20px;
+      padding: 0;
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      background: none;
+      cursor: pointer;
+    }
+    input[type=color]::-webkit-color-swatch-wrapper { padding: 2px; }
+    input[type=color]::-webkit-color-swatch { border: 0; border-radius: 2px; }
+
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 9px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .check input {
+      width: 15px; height: 15px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .note {
+      margin-top: 14px;
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1280px) {
+      .app { grid-template-columns: minmax(0, 1fr) 300px; }
+      .panel.second { grid-column: 2; }
+    }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .panel, .stage { position: static; }
+      .panel.second { grid-column: 1; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <div class="stage">
+      <div id="holder"></div>
+      <div class="legend">
+        <label class="check" style="margin:0"><input type="checkbox" id="showFrameLine" checked><i class="swatch frame"></i> з кадру</label>
+        <label class="check" style="margin:0"><input type="checkbox" id="showGenLine" checked><i class="swatch gen"></i> добудована</label>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="title">контур-набір<b>тексти → вивід</b></div>
+
+      <fieldset>
+        <legend>Текст</legend>
+
+        <div class="ctrl">
+          <label for="artboard">ширина макета</label>
+          <input type="range" id="artboard" min="800" max="4000" value="2000" step="50">
+          <output id="artboard-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="pad">відступ</label>
+          <input type="range" id="pad" min="0" max="60" value="8" step="1">
+          <output id="pad-val"></output>
+        </div>
+        <label class="check"><input type="checkbox" id="hideVideo"> сховати відео</label>
+        <p class="note" style="margin-top:8px">Enter у полі — примусовий перенос рядка. Два підряд дають порожній рядок.</p>
+
+     <div class="col">
+          <div class="col-head"><span class="col-num">01</span><span class="col-meta">великі літери</span></div>
+          <textarea id="txt1">Освітня програма для молоді</textarea>
+          <div class="metrics">
+            <span>кегль <input type="number" id="size1" value="110" min="4" max="400"></span>
+            <span>інтерл. <input type="number" id="lead1" value="144" min="4" max="500"></span>
+          </div>
+          <div class="row-color">
+            <label for="color1">колір <input type="color" id="color1" value="#80766f"></label>
+            <output id="color1-val">#80766f</output>
+            <label class="check" style="margin:0 0 0 auto; font-size:11px; color:var(--muted)"><input type="checkbox" id="repeat1" checked> повтор</label>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="col-head"><span class="col-num">02</span><span class="col-meta">як введено</span></div>
+          <textarea id="txt2">участь безкоштовна вік: до 35 років набір учасників до 24 квітня воркшопи: 2, 6, 9 травня (київ)</textarea>
+          <div class="metrics">
+            <span>кегль <input type="number" id="size2" value="40" min="4" max="400"></span>
+            <span>інтерл. <input type="number" id="lead2" value="36" min="4" max="500"></span>
+          </div>
+          <div class="row-color">
+            <label for="color2">колір <input type="color" id="color2" value="#c5c0b5"></label>
+            <output id="color2-val">#c5c0b5</output>
+            <label class="check" style="margin:0 0 0 auto; font-size:11px; color:var(--muted)"><input type="checkbox" id="repeat2" checked> повтор</label>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="col-head"><span class="col-num">03</span><span class="col-meta">великі літери</span></div>
+          <textarea id="txt3">Воркшопи письма та рефлексії з Оленою Гусейновою на тему пам'яті (у контексті Голокосту)</textarea>
+          <div class="metrics">
+            <span>кегль <input type="number" id="size3" value="62" min="4" max="400"></span>
+            <span>інтерл. <input type="number" id="lead3" value="72" min="4" max="500"></span>
+          </div>
+          <div class="row-color">
+            <label for="color3">колір <input type="color" id="color3" value="#cec19e"></label>
+            <output id="color3-val">#cec19e</output>
+            <label class="check" style="margin:0 0 0 auto; font-size:11px; color:var(--muted)"><input type="checkbox" id="repeat3" checked> повтор</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Плашка</legend>
+        <label class="check"><input type="checkbox" id="showBanner" checked> показувати плашку</label>
+        <div class="ctrl">
+          <label for="bandH">висота</label>
+          <input type="range" id="bandH" min="60" max="500" value="180" step="5">
+          <output id="bandH-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="bandLine">лінія</label>
+          <input type="range" id="bandLine" min="0" max="20" value="4" step="1">
+          <output id="bandLine-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="bandSize">кегль</label>
+          <input type="range" id="bandSize" min="20" max="300" value="120" step="2">
+          <output id="bandSize-val"></output>
+        </div>
+        <div class="metrics" style="grid-template-columns: 1fr 1fr 1fr;">
+          <span><input type="text" id="word1" value="OPERA"></span>
+          <span><input type="text" id="word2" value="7"></span>
+          <span><input type="text" id="word3" value="LIVES"></span>
+        </div>
+        <p class="note">Arial Bold, великі літери. Колір слів і правила береться з блоку 01. Кожне слово стає на початок своєї лінії, базова лінія — на нижньому краю правила. У режимі «3 лінії»: OPERA — добудована, 7 — перша з кадру, LIVES — друга. У режимі «силует»: OPERA — від краю кадру, 7 — добудована, LIVES — центр силуету.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Силует</legend>
+        <label class="check"><input type="checkbox" id="useMask" checked> силует як фільтр</label>
+        <label class="check"><input type="checkbox" id="invMask"> інверт маски</label>
+        <label class="check"><input type="checkbox" id="showMask"> показати маску</label>
+        <p class="note">Увімкни «показати маску» на старті. Рожевим залито зону, виключену з пошуку — там має бути фон. Якщо залито людину, тисни «інверт маски».</p>
+      </fieldset>
+    </aside>
+
+    <aside class="panel second">
+      <div class="title">контур-набір<b>камера → лінії</b></div>
+
+      <fieldset>
+        <legend>Кадр</legend>
+        <div class="ctrl">
+          <label for="zoom">кроп</label>
+          <input type="range" id="zoom" min="100" max="400" value="165" step="5">
+          <output id="zoom-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="panX">зсув ←→</label>
+          <input type="range" id="panX" min="0" max="100" value="25" step="1">
+          <output id="panX-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="panY">зсув ↑↓</label>
+          <input type="range" id="panY" min="0" max="100" value="50" step="1">
+          <output id="panY-val"></output>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Зображення</legend>
+        <div class="ctrl">
+          <label for="blur">розмиття</label>
+          <input type="range" id="blur" min="0" max="10" value="1" step="1">
+          <output id="blur-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="threshView">поріг показу</label>
+          <input type="range" id="threshView" min="10" max="245" value="103" step="1">
+          <output id="threshView-val"></output>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Лінії</legend>
+        <div class="ctrl">
+          <label for="mode">режим</label>
+          <select id="mode">
+            <option value="three" selected>3 лінії</option>
+            <option value="outline">силует (обвід)</option>
+          </select>
+          <output></output>
+        </div>
+        <div class="ctrl">
+          <label for="lineA">лінія A</label>
+          <select id="lineA">
+            <option value="right">край силуету, правий</option>
+            <option value="left" selected>край силуету, лівий</option>
+            <option value="tonal">тональна</option>
+          </select>
+          <output></output>
+        </div>
+        <div class="ctrl">
+          <label for="threshB">поріг лінії B</label>
+          <input type="range" id="threshB" min="10" max="245" value="165" step="1">
+          <output id="threshB-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="gap">мін. проміж</label>
+          <input type="range" id="gap" min="0" max="200" value="145" step="5">
+          <output id="gap-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="jump">макс. стрибок</label>
+          <input type="range" id="jump" min="1" max="60" value="32" step="1">
+          <output id="jump-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="smooth">згладжування</label>
+          <input type="range" id="smooth" min="0" max="40" value="10" step="1">
+          <output id="smooth-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="inertia">інерція</label>
+          <input type="range" id="inertia" min="0" max="95" value="75" step="1">
+          <output id="inertia-val"></output>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Третя лінія</legend>
+        <div class="ctrl">
+          <label for="offset">зсув</label>
+          <input type="range" id="offset" min="10" max="600" value="270" step="5">
+          <output id="offset-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="variation">варіація</label>
+          <input type="range" id="variation" min="0" max="100" value="1" step="1">
+          <output id="variation-val"></output>
+        </div>
+        <div class="ctrl">
+          <label for="deform">деформація</label>
+          <input type="range" id="deform" min="0" max="300" value="130" step="5">
+          <output id="deform-val"></output>
+        </div>
+      </fieldset>
+    </aside>
+
+  </div>
+</body>
+</html>
