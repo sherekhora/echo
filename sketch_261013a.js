@@ -10,7 +10,8 @@ const SIZE_MIN = 100;
 const SIZE_MAX = 4000;
 
 const FILES = ['Shape01.svg', 'Shape02.svg', 'Shape03.svg'];
-const FONT_FILE = 'SkemaProOmni-Regular.ttf';
+const FONT_FAMILY = 'SkemaProOmni';       // підключає rentafont з index.html
+const FONT_TIMEOUT = 10000;               // мс чекати шрифт, далі малюємо запасним
 const AUDIO_DIR = 'audio/';
 const AUDIO_FALLBACK = 'audio1.mp3';      // якщо жоден трек знайти не вдалося
 const STEP = 2;               // крок вибірки контуру, px
@@ -36,7 +37,8 @@ let baseShapes = [];          // контури в координатах арт
 let shapes = [];              // вони ж, підігнані під поточне полотно
 let fitW = 0;
 let fitH = 0;
-let font, snd, fft, cnv;          // snd порожній, поки трек не завантажився
+let snd, fft, cnv;                // snd порожній, поки трек не завантажився
+let fontReady = false;            // true, коли шрифт rentafont завантажений
 let tracks = [];
 let trackIdx = 0;
 let coverSrc = null;
@@ -57,17 +59,53 @@ let recStart = 0;
 let recExt = 'webm';
 let audioDest = null;
 
+/* ---------- шрифт ---------- */
+
+// rentafont підставляє @font-face асинхронно, тому чекаємо, поки face
+// з'явиться в document.fonts, і вантажимо його. Далі text() малює вже ним.
+function waitFont() {
+  const t0 = Date.now();
+
+  const tick = () => {
+    let face = null;
+    document.fonts.forEach(f => {
+      if (f.family.replace(/['"]/g, '') === FONT_FAMILY) face = f;
+    });
+
+    if (face) {
+      face.load().then(() => {
+        fontReady = true;
+        console.log('шрифт готовий:', FONT_FAMILY);
+      }).catch(e => {
+        console.log('шрифт не завантажився:', e);
+        fontReady = true;                   // малюємо запасним, але не висимо
+      });
+      return;
+    }
+
+    if (Date.now() - t0 > FONT_TIMEOUT) {
+      console.log('шрифт', FONT_FAMILY, 'не з\'явився за', FONT_TIMEOUT, 'мс. Домен у замовленні rentafont?');
+      fontReady = true;                     // малюємо запасним
+      return;
+    }
+    setTimeout(tick, 100);
+  };
+
+  tick();
+}
+
 /* ---------- p5 ---------- */
 
 function preload() {
   raw = FILES.map(f => loadStrings(f));
-  font = loadFont(FONT_FILE);
 }
 
 function setup() {
   cnv = createCanvas(W, H);
   cnv.parent('stage');
   pixelDensity(1);
+
+  waitFont();
 
   baseShapes = raw.map((lines, i) => {
     const ln = parseSVG(lines.join('\n'), FILES[i]);
@@ -120,40 +158,42 @@ function draw() {
     }
   }
 
-  /* текст */
-  noStroke();
-  textFont(font);
-  textAlign(LEFT, BASELINE);
+  /* текст: поки шрифт не готовий, не малюємо, щоб не було кадрів запасним шрифтом */
+  if (fontReady) {
+    noStroke();
+    textFont(FONT_FAMILY);
+    textAlign(LEFT, BASELINE);
 
-  for (let i = 0; i < count; i++) {
-    const s = ui.s[i];
-    const size = baseSize * SCALE[i];
-    const lead = max(1, baseLead * SCALE[i]);
+    for (let i = 0; i < count; i++) {
+      const s = ui.s[i];
+      const size = baseSize * SCALE[i];
+      const lead = max(1, baseLead * SCALE[i]);
 
-    textSize(size);
-    const ascent = textAscent();
+      textSize(size);
+      const ascent = textAscent();
 
-    const src = s.text.value().split('\n');
-    const seq = repeatOn ? src.concat(new Array(spaceLn).fill('')) : src;
+      const src = s.text.value().split('\n');
+      const seq = repeatOn ? src.concat(new Array(spaceLn).fill('')) : src;
 
-    let baseline = baseTop * SCALE[i] + ascent;
-    let lastX = GAP;
-    let idx = 0;
+      let baseline = baseTop * SCALE[i] + ascent;
+      let lastX = GAP;
+      let idx = 0;
 
-    fill(DEFAULTS[i].col);
+      fill(DEFAULTS[i].col);
 
-    while (true) {
-      if (!repeatOn && idx >= seq.length) break;
-      if (baseline - ascent > H) break;
+      while (true) {
+        if (!repeatOn && idx >= seq.length) break;
+        if (baseline - ascent > H) break;
 
-      const ln = seq[idx % seq.length];
-      const ex = edgeX(geo[i].lines, geo[i].dx, baseline - size * 0.3);
-      const x = ex === null ? lastX : ex + GAP;
-      lastX = x;
-      if (ln.length) text(ln, x, baseline);
+        const ln = seq[idx % seq.length];
+        const ex = edgeX(geo[i].lines, geo[i].dx, baseline - size * 0.3);
+        const x = ex === null ? lastX : ex + GAP;
+        lastX = x;
+        if (ln.length) text(ln, x, baseline);
 
-      baseline += lead;
-      idx++;
+        baseline += lead;
+        idx++;
+      }
     }
   }
 
