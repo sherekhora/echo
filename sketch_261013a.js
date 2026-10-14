@@ -25,8 +25,8 @@ const TONE_DARK  = '#48423e';             // градієнтний мап cover
 const TONE_LIGHT = '#fff5ed';
 
 const DEFAULTS = [
-  { text: 'OPEN\nCALL',                                                              col: '#59524d', x: -190 },
-  { text: 'For young ukrainian artists\nparticipate in\n“7 LIVES – ECHOES OF\nBABYN YAR”', col: '#9b9164', x: 145  },
+  { text: 'OPEN\nCALL',                                                              col: '#59524d', x: -110 },
+  { text: 'For young ukrainian\nartists participate in\n“7 LIVES – ECHOES OF\nBABYN YAR”', col: '#9b9164', x: 225  },
   { text: 'Третій блок\nдо кривої',                                                  col: '#59524d', x: 0    },
 ];
 
