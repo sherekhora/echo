@@ -31,11 +31,16 @@
       --dim:    #86867f;
       --accent: #ff5c00;
       --bar-h:  48px;
-      --work-h: calc(100vh - var(--bar-h) - 48px);
     }
     * { box-sizing: border-box; }
+
+    /* висота береться від контейнера (вікна або iframe), а не від 100vh:
+       html → body → #app → колонки і полотно, усе через відсотки */
+    html, body { height: 100%; }
     body {
-      margin: 0; background: var(--bg); color: var(--ink);
+      margin: 0; overflow: hidden;
+      display: flex; flex-direction: column;
+      background: var(--bg); color: var(--ink);
       font: 11px/1.3 "SF Mono", "Roboto Mono", Menlo, monospace;
       -webkit-font-smoothing: antialiased; user-select: none;
     }
@@ -43,6 +48,7 @@
     /* ---- верхня панель: ліво / центр / право ---- */
 
     #topbar {
+      flex: none;
       height: var(--bar-h);
       margin: 18px 18px 0;
       padding: 0 14px;
@@ -83,18 +89,22 @@
 
     /* ---- робоча зона ---- */
 
-    #app { display: flex; gap: 18px; padding: 12px 18px 18px; align-items: flex-start; }
+    /* #app забирає весь залишок висоти під верхньою панеллю */
+    #app {
+      flex: 1 1 0; min-height: 0;
+      display: flex; gap: 18px; padding: 12px 18px 18px; align-items: flex-start;
+    }
 
     .col {
       width: 290px; flex: none; display: flex; flex-direction: column; gap: 12px;
-      max-height: var(--work-h); overflow-y: auto;
+      max-height: 100%; overflow-y: auto;
     }
 
     .panel {
       background: var(--panel); border: 1px solid var(--line);
       border-radius: 5px; padding: 14px;
     }
-    #textPanel { width: 290px; flex: none; max-height: var(--work-h); overflow-y: auto; }
+    #textPanel { width: 290px; flex: none; max-height: 100%; overflow-y: auto; }
 
     .brand {
       display: flex; justify-content: space-between; align-items: baseline;
@@ -193,13 +203,13 @@
     }
 
     #stage {
-      flex: 1 1 auto; min-width: 0; height: var(--work-h);
+      flex: 1 1 auto; min-width: 0; height: 100%;
       display: flex; justify-content: center; align-items: flex-start;
       line-height: 0;
     }
     #stage canvas {
       width: auto !important; height: auto !important;
-      max-width: 100%; max-height: var(--work-h);
+      max-width: 100%; max-height: 100%;
     }
   </style>
 </head>
