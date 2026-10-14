@@ -9,11 +9,13 @@ function buildTopBar() {
   const cb = createCheckbox('visible', showGuides).class('chk').parent(left);
   cb.changed(() => { showGuides = cb.checked(); });
 
-  // по центру: розмір полотна
+  // по центру: розмір полотна (один на всю серію)
   const mid = select('#tbCenter');
   createSpan('size').class('lbl').parent(mid);
   const wrap = createDiv().class('sizeseg').parent(mid);
   ui.sizeMode = segToggle(wrap, ['post', 'story', 'custom'], 0, i => {
+    if (recorder) return;
+    sizeMode = i;
     if (i === 0) setCanvasSize(SIZE_POST[0], SIZE_POST[1]);
     if (i === 1) setCanvasSize(SIZE_STORY[0], SIZE_STORY[1]);
     // custom: розмір лишається, далі міняється полями
@@ -24,15 +26,16 @@ function buildTopBar() {
   ui.ch = createInput(String(H), 'number').class('num').parent(mid);
 
   const applyCustom = () => {
+    if (!recorder) sizeMode = 2;
     selectSeg(ui.sizeMode, 2);             // ручне введення = custom
     setCanvasSize(Number(ui.cw.value()) || W, Number(ui.ch.value()) || H);
   };
   ui.cw.changed(applyCustom);
   ui.ch.changed(applyCustom);
 
-  // праворуч: збереження
+  // праворуч: збереження. jpg — уся серія, відео — лише current
   const right = select('#tbRight');
-  createButton('save jpg').class('act').parent(right).mousePressed(() => saveCanvas('contour', 'jpg'));
+  createButton('save jpg').class('act').parent(right).mousePressed(saveAll);
   ui.rec = createButton('save animation').class('tgl rec').parent(right);
   ui.rec.mousePressed(toggleRec);
 }
@@ -133,23 +136,23 @@ function setMode(isAudio) {
   selectSeg(ui.mode, isAudio ? 1 : 0);
 }
 
-/* ---------- cover ---------- */
+/* ---------- cover (свій у кожного полотна) ---------- */
 
 function buildCoverUI() {
   const root = select('#cover');
   const g = group(root, 'image', '00');
 
   const rf = row(g, 'file');
-  createFileInput(loadCover).parent(rf);
+  ui.coverFile = createFileInput(loadCover).parent(rf);
 
-  ui.coverScale = sliderNum(g, 'scale %', 0, 100, 20, 1);
+  ui.coverScale = sliderNum(g, 'scale %', 0, 100, COVER_SCALE, 1, v => { board().coverScale = v; });
   createDiv('% від ширини полотна, кут — правий нижній').class('note').parent(g);
 
   const rc = row(g, '');
   createButton('remove').class('tgl').parent(rc).mousePressed(removeCover);
 }
 
-/* ---------- text ---------- */
+/* ---------- text (тексти й offset x свої в кожного полотна) ---------- */
 
 function buildTextUI() {
   buildTopBar();   // верхня панель будується разом із текстовою
@@ -159,7 +162,7 @@ function buildTextUI() {
   const g = group(root, 'layout', '00');
 
   const r3 = row(g, 'repeat');
-  toggleButton(r3, 'repeat', repeatOn, v => { repeatOn = v; });
+  ui.repeat = toggleButton(r3, 'repeat', board().repeat, v => { board().repeat = v; });
 
   const r4 = row(g, 'space ln');
   segToggle(r4, ['0', '1'], spaceLn, i => { spaceLn = i; });
@@ -173,10 +176,11 @@ function buildTextUI() {
     const d = DEFAULTS[i];
     const box = group(root, 'text ' + (i + 1), '0' + (i + 1));
     const ta = createElement('textarea', d.text).parent(box);
+    ta.input(() => { board().text[i] = ta.value(); });
     return {
       box: box,
       text: ta,
-      x:   slider(box, 'offset x', -540, 540, d.x, 1),
+      x:   slider(box, 'offset x', -540, 540, d.x, 1, v => { board().x[i] = v; }),
     };
   });
 }
@@ -223,29 +227,36 @@ function selectSeg(btns, i) {
   btns[i].addClass('on');
 }
 
-// одна кнопка вкл/викл; стартовий стан береться зі змінної
+// одна кнопка вкл/викл; set(v) ставить стан ззовні (при переході між полотнами)
 function toggleButton(parent, label, start, onChange) {
   let on = start;
   const b = createButton(label).class('tgl').parent(parent);
-  if (on) b.addClass('on');
+  const paint = () => { on ? b.addClass('on') : b.removeClass('on'); };
+  paint();
   b.mousePressed(() => {
     on = !on;
-    on ? b.addClass('on') : b.removeClass('on');
+    paint();
     onChange(on);
   });
-  return b;
+  return { btn: b, set: v => { on = v; paint(); } };
 }
 
-function slider(parent, label, min, max, val, step) {
+// повзунок з підписом; onInput (необов'язковий) отримує нове значення;
+// setVal ставить значення ззовні разом із підписом
+function slider(parent, label, min, max, val, step, onInput) {
   const r = row(parent, label);
   const s = createSlider(min, max, val, step).parent(r);
   const out = createSpan(String(val)).class('val').parent(r);
-  s.input(() => out.html(s.value()));
+  s.input(() => {
+    out.html(s.value());
+    if (onInput) onInput(Number(s.value()));
+  });
+  s.setVal = v => { s.value(v); out.html(v); };
   return s;
 }
 
-// повзунок + поле для ручного вводу
-function sliderNum(parent, label, lo, hi, val, step) {
+// повзунок + поле для ручного вводу; onChange (необов'язковий) отримує нове значення
+function sliderNum(parent, label, lo, hi, val, step, onChange) {
   const r = row(parent, label);
   const s = createSlider(lo, hi, val, step).parent(r);
   const inp = createInput(String(val), 'number').class('num').parent(r);
@@ -254,16 +265,24 @@ function sliderNum(parent, label, lo, hi, val, step) {
   inp.attribute('max', hi);
   let current = val;
 
-  s.input(() => { current = Number(s.value()); inp.value(current); });
+  s.input(() => {
+    current = Number(s.value());
+    inp.value(current);
+    if (onChange) onChange(current);
+  });
   inp.input(() => {
     const v = Number(inp.value());
     if (inp.value() === '' || isNaN(v)) return;
     current = constrain(v, lo, hi);
     s.value(current);
+    if (onChange) onChange(current);
   });
   inp.changed(() => inp.value(current));
 
-  return { value: () => current };
+  return {
+    value: () => current,
+    set: v => { current = v; s.value(v); inp.value(v); },
+  };
 }
 
 function numField(parent, label, val) {

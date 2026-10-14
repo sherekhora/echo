@@ -1,15 +1,20 @@
+// cover належить current-полотну, на яке його завантажили
 function loadCover(f) {
   if (f.type !== 'image') { console.log('це не зображення:', f.name); return; }
+  const bd = board();
   loadImage(f.data, img => {
     if (img.width > W) img.resize(W, 0);   // більше за ширину полотна не знадобиться
-    coverSrc = img;
-    cover = toneMap(coverSrc, TONE_DARK, TONE_LIGHT);
+    bd.coverSrc = img;
+    bd.cover = toneMap(img, TONE_DARK, TONE_LIGHT);
+    thumbsDirty = true;
   });
 }
 
 function removeCover() {
-  coverSrc = null;
-  cover = null;
+  const bd = board();
+  bd.coverSrc = null;
+  bd.cover = null;
+  ui.coverFile.elt.value = '';
 }
 
 function hexRGB(h) {

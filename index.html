@@ -5,21 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- PLEASE NO CHANGES BELOW THIS LINE (UNTIL I SAY SO) -->
   <script language="javascript" type="text/javascript" src="libraries/p5.min.js"></script>
-  <script src="https://unpkg.com/p5@1.5.0/lib/addons/p5.sound.min.js"></script>
+  <script language="javascript" type="text/javascript" src="audio.js"></script>
+  <script language="javascript" type="text/javascript" src="boards.js"></script>
+  <script language="javascript" type="text/javascript" src="cover.js"></script>
+  <script language="javascript" type="text/javascript" src="font.js"></script>
+  <script language="javascript" type="text/javascript" src="record.js"></script>
+  <script language="javascript" type="text/javascript" src="shape.js"></script>
+  <script language="javascript" type="text/javascript" src="ui.js"></script>
   <script language="javascript" type="text/javascript" src="sketch_261013a.js"></script>
   <!-- OK, YOU CAN MAKE CHANGES BELOW THIS LINE AGAIN -->
 
-  <!-- шрифт Skema Pro Omni Regular через rentafont -->
-  <script type="text/javascript" src="https://rentafont.com/javascripts/webfonts.js" async></script>
-  <script type="text/javascript">
-    WebFontConfig = {id: 'MTIwMTM0b3JkZXIzMzM5MjY=', fonts: [/*'Skema Pro Omni Regular'*/'16177596'], by_style: 1};
+  <!-- Блок вище Processing перегенеровує сам: вписує всі .js вкладки і прибирає
+       рядки, яких не знає. Тому вкладки стоять там, а p5.sound — тут, і
+       підключається, лише якщо його ще немає. Порядок вкладок неважливий:
+       код у них виконується в preload/setup, після завантаження сторінки. -->
+  <script>
+    if (typeof p5.FFT !== 'function') {
+      document.write('<script src="https://unpkg.com/p5@1.5.0/lib/addons/p5.sound.min.js"><\/script>');
+    }
   </script>
-
-  <script src="shape.js"></script>
-  <script src="audio.js"></script>
-  <script src="cover.js"></script>
-  <script src="record.js"></script>
-  <script src="ui.js"></script>
 
   <style>
     :root {
@@ -202,14 +206,45 @@
       width: 5px; height: 15px; border: none; border-radius: 1px; background: var(--ink);
     }
 
+    /* ---- полотна: сусід ‹ current › сусід, під ними навігація серії ---- */
+
     #stage {
       flex: 1 1 auto; min-width: 0; height: 100%;
-      display: flex; justify-content: center; align-items: flex-start;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    #strip {
+      --thumb-w: 12%;
+      flex: 1 1 0; min-height: 0;
+      display: flex; justify-content: center; align-items: center; gap: 16px;
       line-height: 0;
     }
-    #stage canvas {
+    #strip > canvas {
+      order: 1; flex: none;
       width: auto !important; height: auto !important;
-      max-width: 100%; max-height: 100%;
+      max-height: 100%; max-width: calc(100% - 2 * var(--thumb-w) - 32px);
+    }
+    .thumb {
+      flex: 0 0 var(--thumb-w); cursor: pointer;
+      opacity: .45; transition: opacity .15s;
+    }
+    .thumb:hover { opacity: .8; }
+    .thumb.off { visibility: hidden; }
+    .thumb canvas { display: block; width: 100%; height: auto; }
+    #thPrev { order: 0; }
+    #thNext { order: 2; }
+
+    #boardNav {
+      flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    }
+    #bnCenter, #bnRight { display: flex; align-items: center; gap: 8px; }
+    #bnCenter { grid-column: 2; }
+    #bnRight  { grid-column: 3; justify-self: end; }
+    #boardNav .tgl { flex: none; padding: 7px 16px; }
+    #bnCenter .tgl { font-size: 14px; padding: 3px 14px; }
+    .tgl:disabled { opacity: .35; cursor: default; }
+    .bcount {
+      min-width: 76px; text-align: center; font-size: 14px;
+      letter-spacing: .08em; font-variant-numeric: tabular-nums;
     }
   </style>
 </head>
@@ -232,7 +267,16 @@
       </details>
     </div>
 
-    <div id="stage"></div>
+    <div id="stage">
+      <div id="strip">
+        <div class="thumb off" id="thPrev"><canvas></canvas></div>
+        <div class="thumb off" id="thNext"><canvas></canvas></div>
+      </div>
+      <div id="boardNav">
+        <div id="bnCenter"></div>
+        <div id="bnRight"></div>
+      </div>
+    </div>
 
     <div class="panel" id="textPanel">
       <div class="brand"><b>text</b><span>03</span></div>
