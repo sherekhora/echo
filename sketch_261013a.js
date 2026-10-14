@@ -41,7 +41,6 @@ let tracks = [];
 let trackIdx = 0;
 let ui = {};
 let count = 2;
-let spaceLn = 1;
 let showGuides = false;
 let audioMode = false;
 let lv = [0, 0, 0];
@@ -155,7 +154,7 @@ function renderBoard(g, bd, geo, guides) {
       const ascent = g.textAscent();
 
       const src = bd.text[i].split('\n');
-      const seq = bd.repeat ? src.concat(new Array(spaceLn).fill('')) : src;
+      const seq = bd.repeat[i] ? src.concat(new Array(bd.space[i]).fill('')) : src;
 
       let baseline = baseTop * SCALE[i] + ascent;
       let lastX = GAP;
@@ -164,7 +163,7 @@ function renderBoard(g, bd, geo, guides) {
       g.fill(DEFAULTS[i].col);
 
       while (true) {
-        if (!bd.repeat && idx >= seq.length) break;
+        if (!bd.repeat[i] && idx >= seq.length) break;
         if (baseline - ascent > H) break;
 
         const ln = seq[idx % seq.length];

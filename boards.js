@@ -1,6 +1,6 @@
 /* ---------- серія полотен ----------
-   До BOARD_MAX полотен. Редагується лише current (по центру). Тексти, offset x
-   і cover у кожного полотна свої; size, layout, контури і звук спільні.
+   До BOARD_MAX полотен. Редагується лише current (по центру). Тексти, offset x,
+   repeat, space ln і cover у кожного полотна свої; size, layout, контури і звук спільні.
    Сусіди показуються статичними мініатюрами (без дихання). */
 
 const BOARD_MAX = 10;
@@ -25,7 +25,8 @@ function newBoard(from) {
     return {
       text: from.text.slice(),
       x: from.x.slice(),
-      repeat: from.repeat,
+      repeat: from.repeat.slice(),
+      space: from.space.slice(),
       coverSrc: from.coverSrc,
       cover: from.cover,
       coverScale: from.coverScale,
@@ -34,7 +35,8 @@ function newBoard(from) {
   return {
     text: DEFAULTS.map(d => d.text),
     x: DEFAULTS.map(d => d.x),
-    repeat: true,
+    repeat: [true, true, true],     // для кожного з трьох текстів
+    space: [1, 1, 1],               // порожніх рядків між повторами: 0 або 1
     coverSrc: null,
     cover: null,
     coverScale: COVER_SCALE,
@@ -126,8 +128,10 @@ function showBoard() {
   for (let i = 0; i < 3; i++) {
     ui.s[i].text.value(bd.text[i]);
     ui.s[i].x.setVal(bd.x[i]);
+    ui.s[i].rep.set(bd.repeat[i]);
+    ui.s[i].sp.set(bd.space[i] === 1);
+    syncSpace(i);
   }
-  ui.repeat.set(bd.repeat);
   ui.coverScale.set(bd.coverScale);
   ui.coverFile.elt.value = '';
 

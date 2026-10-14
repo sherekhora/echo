@@ -27,16 +27,16 @@
 
   <style>
     :root {
-      --bg:     #d6d6d3;                 /* колір рамки полотен; фон сторінки прозорий */
-      --frame:  2px;                     /* товщина рамки полотен */
+      --page:   #ececea;                 /* фон сторінки */
       --edge:   1svw;                    /* відступ інтерфейсу від країв вікна */
-      --panel:  #ebebe8;
-      --sunken: #c4c4c0;
-      --line:   #b4b4af;
-      --ink:    #1c1c1a;
-      --dim:    #86867f;
-      --accent: #ff5c00;
-      --bar-h:  48px;
+      --pill:   #ffffff;                 /* пігулки з повзунками, поля вводу */
+      --chip:   #dcdcd9;                 /* кнопки і перемикачі */
+      --chip-h: #cfcfcb;                 /* кнопка під курсором */
+      --ink:    #111111;
+      --dim:    #8a8a85;
+      --accent: #f04a2a;                 /* активний стан; текст на ньому темний */
+      --h:      36px;                    /* висота всіх контролів */
+      --r:      999px;                   /* радіус пігулки */
     }
     * { box-sizing: border-box; }
 
@@ -46,173 +46,191 @@
     body {
       margin: 0; overflow: hidden;
       display: flex; flex-direction: column;
-      background: transparent; color: var(--ink);
-      font: 11px/1.3 "SF Mono", "Roboto Mono", Menlo, monospace;
+      background: var(--page); color: var(--ink);
+      font: 13px/1.25 "Helvetica Neue", Helvetica, Inter, system-ui, -apple-system, Arial, sans-serif;
       -webkit-font-smoothing: antialiased; user-select: none;
     }
+
+    /* панелі без фону: контроли лежать прямо на сторінці */
+    .panel { background: none; border: 0; padding: 0; }
 
     /* ---- верхня панель: ліво / центр / право ---- */
 
     #topbar {
       flex: none;
-      height: var(--bar-h);
+      min-height: var(--h);
       margin: var(--edge) var(--edge) 0;
-      padding: 0 14px;
-      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
     }
-    #tbLeft, #tbCenter, #tbRight { display: flex; align-items: center; gap: 14px; }
+    #tbLeft, #tbCenter, #tbRight { display: flex; align-items: center; gap: 8px; }
     #tbLeft   { justify-self: start; }
     #tbCenter { justify-self: center; }
     #tbRight  { justify-self: end; }
 
-    #topbar .lbl {
-      width: auto; font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim);
-    }
-    #topbar .seg { flex: none; width: 110px; }
-    #topbar .seg button { padding: 6px 0; }
-    #topbar .tgl, #topbar .act { flex: none; padding: 7px 16px; }
-
-    #topbar .sizeseg { display: flex; }
-    #topbar .sizeseg .seg { width: 230px; }
-    #topbar input.num { width: 62px; padding: 5px 6px; }
-
-    .chk { display: flex; align-items: center; }
-    .chk label {
-      display: flex; align-items: center; gap: 7px; cursor: pointer;
-      font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink);
-    }
-    .chk input {
-      -webkit-appearance: none; appearance: none; margin: 0; cursor: pointer; flex: none;
-      width: 14px; height: 14px; border: 1.5px solid var(--ink); border-radius: 2px;
-      background: var(--panel); position: relative;
-    }
-    .chk input:checked { background: var(--ink); }
-    .chk input:checked::after {
-      content: ''; position: absolute; left: 3px; top: 0px;
-      width: 4px; height: 8px; border: solid #fff; border-width: 0 1.5px 1.5px 0;
-      transform: rotate(45deg);
-    }
+    #topbar .lbl { color: var(--dim); margin: 0 2px 0 6px; }
+    #topbar .lbl:first-child { margin-left: 2px; }
+    #topbar .seg, #topbar .sizeseg { flex: none; }
+    #topbar .seg button, #topbar .tgl, #topbar .act { flex: none; }
+    #topbar input.num { width: 72px; text-align: center; }
 
     /* ---- робоча зона ---- */
 
     /* #app забирає весь залишок висоти під верхньою панеллю */
     #app {
       flex: 1 1 0; min-height: 0;
-      display: flex; gap: 18px; padding: 12px var(--edge) var(--edge); align-items: flex-start;
+      display: flex; gap: 20px; padding: 20px var(--edge) var(--edge); align-items: flex-start;
     }
 
     .col {
-      width: 290px; flex: none; display: flex; flex-direction: column; gap: 12px;
+      width: 300px; flex: none; display: flex; flex-direction: column; gap: 14px;
       max-height: 100%; overflow-y: auto;
     }
+    #textPanel { width: 300px; flex: none; max-height: 100%; overflow-y: auto; }
 
-    .panel {
-      background: var(--panel); border: 1px solid var(--line);
-      border-radius: 5px; padding: 14px;
-    }
-    #textPanel { width: 290px; flex: none; max-height: 100%; overflow-y: auto; }
-
+    /* заголовок панелі: назва ліворуч, стрілка праворуч */
     .brand {
-      display: flex; justify-content: space-between; align-items: baseline;
-      padding-bottom: 11px; margin-bottom: 13px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+      min-height: 28px; padding: 0 4px; margin-bottom: 8px;
+      font-size: 15px;
     }
-    .brand b { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
-    .brand span { color: var(--dim); letter-spacing: .1em; }
+    .brand b { font-weight: 600; }
+    .brand span { display: none; }
 
     summary.brand { list-style: none; cursor: pointer; }
     summary.brand::-webkit-details-marker { display: none; }
-    summary.brand b::before {
-      content: '+'; display: inline-block; width: 16px; color: var(--accent);
-    }
-    details[open] > summary.brand b::before { content: '−'; }
-    details:not([open]) > summary.brand { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    summary.brand::after { content: '↓'; }
+    details[open] > summary.brand::after { content: '↑'; }
+    details:not([open]) > summary.brand { margin-bottom: 0; }
 
-    details.sub { margin-bottom: 10px; }
+    /* згорнута підгрупа — сірий чип зі стрілкою */
+    details.sub { margin-bottom: 8px; }
     details.sub > summary {
-      display: block; list-style: none; cursor: pointer;
-      padding-bottom: 5px; margin-bottom: 8px; border-bottom: 1px dotted var(--line);
-      font-size: 9px; font-weight: 700; letter-spacing: .18em;
-      text-transform: uppercase; color: var(--dim);
+      display: inline-flex; align-items: center; gap: 10px;
+      height: var(--h); padding: 0 18px; margin-bottom: 8px;
+      list-style: none; cursor: pointer;
+      border-radius: var(--r); background: var(--chip);
     }
+    details.sub > summary:hover { background: var(--chip-h); }
     details.sub > summary::-webkit-details-marker { display: none; }
-    details.sub > summary::before {
-      content: '+'; display: inline-block; width: 14px; color: var(--accent);
-    }
-    details.sub[open] > summary::before { content: '−'; }
-    details.sub > summary::after { content: attr(data-n); float: right; color: var(--line); }
+    details.sub > summary::after { content: '↓'; }
+    details.sub[open] > summary::after { content: '↑'; }
     details.sub:not([open]) > summary { margin-bottom: 0; }
 
-    .grp { margin-bottom: 14px; transition: opacity .15s; }
-    .grp > h4 {
-      display: flex; justify-content: space-between; margin: 0 0 8px; padding-bottom: 5px;
-      border-bottom: 1px dotted var(--line); font-size: 9px; font-weight: 700;
-      letter-spacing: .18em; text-transform: uppercase; color: var(--dim);
-    }
-    .grp > h4::after { content: attr(data-n); color: var(--line); }
+    .grp { margin-bottom: 18px; transition: opacity .15s; }
+    .grp > h4 { margin: 0 0 8px; padding: 0 18px; font-size: 13px; font-weight: 600; }
 
-    .row { display: flex; align-items: center; gap: 9px; min-height: 24px; margin-bottom: 3px; }
-    .row .lbl {
-      width: 66px; flex: none; font-size: 9px; letter-spacing: .06em;
-      text-transform: uppercase; color: var(--dim);
+    /* усі внутрішні тексти починаються на 18px від краю колонки,
+       контроли — на 94px (18 + підпис 68 + проміжок 8) */
+    .row {
+      display: flex; align-items: center; gap: 8px; min-height: var(--h); margin-bottom: 6px;
+      padding-left: 18px;
     }
-    .row .val { width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+    .row .lbl { width: 68px; flex: none; color: var(--dim); }
+    .row .lbl:empty { display: none; }
+    .row .val { width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* рядок «підпис — повзунок — значення» в білій пігулці */
+    .row.pill {
+      background: var(--pill); border-radius: var(--r);
+      padding: 0 16px 0 18px; gap: 8px;
+    }
+    .row.pill .lbl { width: 68px; color: var(--ink); font-weight: 600; }
+    .row.pill input.num {
+      width: 44px; height: auto; padding: 0;
+      background: transparent; text-align: right;
+    }
+    .row.pill:has(input.num:focus) { box-shadow: 0 0 0 1.5px var(--accent); }
+
     .clock { color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .note { color: var(--dim); font-size: 9px; letter-spacing: .04em; }
+    .note { color: var(--dim); font-size: 11px; padding: 0 18px; margin: 2px 0 8px; }
 
-    .meter { flex: 1; height: 6px; background: var(--sunken); border-radius: 1px; overflow: hidden; }
+    /* рівень смуги під пігулкою shift */
+    .row:has(.meter) { min-height: 0; padding: 0 18px; margin: 0 0 10px; }
+    .meter { flex: 1; height: 3px; background: var(--chip); border-radius: 2px; overflow: hidden; }
     .meter i { display: block; height: 100%; width: 0; background: var(--accent); }
 
-    .seg { display: flex; flex: 1; gap: 4px; }
+    /* ---- кнопки ---- */
+
+    .seg { display: flex; flex: 1; gap: 6px; }
     .seg button, .tgl, .act {
-      flex: 1; font: inherit; letter-spacing: .12em; text-transform: uppercase;
-      padding: 7px 0; cursor: pointer; border-radius: 3px;
-      border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+      flex: 1; font: inherit; height: var(--h); padding: 0 16px;
+      cursor: pointer; white-space: nowrap;
+      border: 0; border-radius: var(--r);
+      background: var(--chip); color: var(--ink);
+      transition: background .12s;
     }
-    .seg button.on, .tgl.on { background: var(--ink); border-color: var(--ink); color: #fff; }
-    .tgl.rec.on { background: var(--accent); border-color: var(--accent); }
-    .act { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .act:active { transform: translateY(1px); }
+    .seg button:hover, .tgl:hover { background: var(--chip-h); }
+    .seg button.on, .tgl.on, .tgl.rec.on { background: var(--accent); color: var(--ink); }
+    .act { background: var(--ink); color: #fff; }
+    .act:hover { background: #333; }
+    .act:active, .tgl:active, .seg button:active { transform: translateY(1px); }
+    .tgl:disabled { opacity: .35; cursor: default; }
+    button:focus { outline: none; }
+
+    /* текстова кнопка (repeat, space ln): як підпис у пігулці, вимкнена — закреслена */
+    .flag {
+      font: inherit; font-weight: 600; color: var(--ink);
+      height: var(--h); padding: 0; margin-right: 18px;
+      background: none; border: 0; cursor: pointer;
+    }
+    .flag:not(.on) { text-decoration: line-through; }
+    .flag:disabled { opacity: .35; cursor: default; }
+    .tgl:disabled:hover { background: var(--chip); }
+
+    /* ---- поля ---- */
 
     textarea, input[type=number], input.hex {
-      font: inherit; color: var(--ink); background: #fff;
-      border: 1px solid var(--line); border-radius: 3px; user-select: text;
+      font: inherit; color: var(--ink); background: var(--pill);
+      border: 0; border-radius: var(--r); user-select: text;
     }
-    textarea:focus, input:focus { outline: none; border-color: var(--accent); }
+    textarea:focus, input:focus { outline: none; }
+    input[type=number]:focus { box-shadow: 0 0 0 1.5px var(--accent); }
+    .row.pill input.num:focus { box-shadow: none; }
     textarea {
-      display: block; width: 100%; height: 92px; resize: vertical;
-      padding: 7px; margin-bottom: 6px; line-height: 1.45;
+      display: block; width: 100%; height: 96px; resize: vertical;
+      padding: 12px 18px; margin-bottom: 6px; line-height: 1.4;
+      border-radius: 18px;
     }
-    input[type=number] { width: 70px; padding: 4px 6px; }
-    input.num { width: 52px; text-align: right; }
-    input.hex { width: 84px; padding: 4px 6px; text-transform: uppercase; }
+    textarea:focus { box-shadow: inset 0 0 0 1.5px var(--accent); }
+    input[type=number] {
+      width: 80px; height: var(--h); padding: 0 14px;
+      font-variant-numeric: tabular-nums; -moz-appearance: textfield;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input.hex { width: 90px; height: var(--h); padding: 0 14px; text-transform: uppercase; }
 
-    input[type=file] { flex: 1; min-width: 0; font: inherit; font-size: 9px; color: var(--dim); }
+    input[type=file] { flex: 1; min-width: 0; font: inherit; font-size: 11px; color: var(--dim); }
     input[type=file]::file-selector-button {
-      font: inherit; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
-      padding: 6px 10px; margin-right: 8px; cursor: pointer; border-radius: 3px;
-      border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+      font: inherit; font-size: 13px; color: var(--ink);
+      height: var(--h); padding: 0 16px; margin-right: 10px; cursor: pointer;
+      border: 0; border-radius: var(--r); background: var(--chip);
     }
+    input[type=file]::file-selector-button:hover { background: var(--chip-h); }
 
+    /* повзунок: тонка чорна лінія, порожнє коло */
     input[type=range] {
-      flex: 1; -webkit-appearance: none; appearance: none;
-      height: 20px; background: transparent; margin: 0; cursor: pointer;
+      flex: 1; min-width: 0; -webkit-appearance: none; appearance: none;
+      height: var(--h); background: transparent; margin: 0; cursor: pointer;
     }
-    input[type=range]::-webkit-slider-runnable-track { height: 3px; background: var(--sunken); }
+    input[type=range]::-webkit-slider-runnable-track { height: 1.5px; background: var(--ink); }
     input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 5px; height: 15px; margin-top: -6px;
-      border-radius: 1px; background: var(--ink);
+      -webkit-appearance: none; box-sizing: border-box;
+      width: 14px; height: 14px; margin-top: -6.25px;
+      border-radius: 50%; border: 1.5px solid var(--ink); background: var(--pill);
     }
-    input[type=range]:hover::-webkit-slider-thumb { background: var(--accent); }
-    input[type=range]::-moz-range-track { height: 3px; background: var(--sunken); }
+    input[type=range]:hover::-webkit-slider-thumb { border-color: var(--accent); }
+    input[type=range]::-moz-range-track { height: 1.5px; background: var(--ink); }
     input[type=range]::-moz-range-thumb {
-      width: 5px; height: 15px; border: none; border-radius: 1px; background: var(--ink);
+      box-sizing: border-box; width: 14px; height: 14px;
+      border-radius: 50%; border: 1.5px solid var(--ink); background: var(--pill);
     }
 
     /* ---- полотна: сусід ‹ current › сусід, під ними навігація серії ---- */
 
     #stage {
       flex: 1 1 auto; min-width: 0; height: 100%;
-      display: flex; flex-direction: column; gap: 12px;
+      display: flex; flex-direction: column; gap: 14px;
     }
     #strip {
       --thumb-w: 12%;
@@ -233,24 +251,20 @@
     .thumb.off { visibility: hidden; }
     .thumb canvas { display: block; width: 100%; height: auto; }
 
-    /* тонка рамка кожного полотна (current і мініатюри); не впливає на розміри
-       і не потрапляє в jpg чи відео */
-    #strip canvas { box-shadow: 0 0 0 var(--frame) var(--bg); }
     #thPrev { order: 0; }
     #thNext { order: 2; }
 
     #boardNav {
       flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
     }
-    #bnCenter, #bnRight { display: flex; align-items: center; gap: 8px; }
+    #bnCenter, #bnRight { display: flex; align-items: center; gap: 6px; }
     #bnCenter { grid-column: 2; }
     #bnRight  { grid-column: 3; justify-self: end; }
-    #boardNav .tgl { flex: none; padding: 7px 16px; }
-    #bnCenter .tgl { font-size: 14px; padding: 3px 14px; }
-    .tgl:disabled { opacity: .35; cursor: default; }
+    #boardNav .tgl { flex: none; }
+    #bnCenter .tgl { width: 44px; padding: 0; font-size: 16px; }
     .bcount {
       min-width: 76px; text-align: center; font-size: 14px;
-      letter-spacing: .08em; font-variant-numeric: tabular-nums;
+      font-variant-numeric: tabular-nums;
     }
   </style>
 </head>

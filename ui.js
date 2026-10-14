@@ -4,10 +4,11 @@ function buildTopBar() {
   // ліворуч: контури і видимість
   const left = select('#tbLeft');
   createSpan('contours').class('lbl').parent(left);
-  segToggle(left, ['2', '3'], count - 2, i => { count = i + 2; });
-
-  const cb = createCheckbox('visible', showGuides).class('chk').parent(left);
-  cb.changed(() => { showGuides = cb.checked(); });
+  segToggle(left, ['2', '3'], count - 2, i => {
+    count = i + 2;
+    syncText3();
+  });
+  toggleButton(left, 'visible', showGuides, v => { showGuides = v; });
 
   // по центру: розмір полотна (один на всю серію)
   const mid = select('#tbCenter');
@@ -79,8 +80,7 @@ function buildAudioUI() {
   ui.trackName.style('display', 'flex');
   ui.trackName.style('align-items', 'center');
   ui.trackName.style('justify-content', 'center');
-  ui.trackName.style('font-size', '16px');
-  ui.trackName.style('letter-spacing', '.08em');
+  ui.trackName.style('font-size', '15px');
   ui.trackName.style('font-variant-numeric', 'tabular-nums');
 
   const rm = row(tr, 'mode');
@@ -95,7 +95,7 @@ function buildAudioUI() {
   });
   ui.clock = createSpan('0:00 / 0:00').class('clock').parent(rp);
 
-  const rs = row(tr, 'seek');
+  const rs = row(tr, 'seek').addClass('pill');
   ui.seek = createSlider(0, 1, 0, 0.001).parent(rs);
   ui.seek.elt.addEventListener('input', () => { seeking = true; });
   ui.seek.elt.addEventListener('change', () => {
@@ -152,37 +152,55 @@ function buildCoverUI() {
   createButton('remove').class('tgl').parent(rc).mousePressed(removeCover);
 }
 
-/* ---------- text (тексти й offset x свої в кожного полотна) ---------- */
+/* ---------- text (тексти, repeat, space ln і offset x свої в кожного полотна) ---------- */
 
 function buildTextUI() {
   buildTopBar();   // верхня панель будується разом із текстовою
 
   const root = select('#controls');
 
-  const g = group(root, 'layout', '00');
+  const g = subgroup(root, 'layout', '00');      // при завантаженні згорнутий
 
-  const r3 = row(g, 'repeat');
-  ui.repeat = toggleButton(r3, 'repeat', board().repeat, v => { board().repeat = v; });
-
-  const r4 = row(g, 'space ln');
-  segToggle(r4, ['0', '1'], spaceLn, i => { spaceLn = i; });
-
-  ui.size    = numField(g, 'size px', 80);
-  ui.leading = numField(g, 'leading px', 78);
-  ui.top     = sliderNum(g, 'top px', 0, 20, 18, 1);
-  createDiv('блоки: 1 = 100%, 2 = 1/2, 3 = 2/3 (кегль, інтерліняж, top)').class('note').parent(g);
+  ui.size    = sliderNum(g, 'size',    10, 400, 80, 1);
+  ui.leading = sliderNum(g, 'leading', 10, 400, 78, 1);
+  ui.top     = sliderNum(g, 'top',     0, 20, 18, 1);
 
   ui.s = FILES.map((f, i) => {
     const d = DEFAULTS[i];
-    const box = group(root, 'text ' + (i + 1), '0' + (i + 1));
+    const box = subgroup(root, 'text ' + (i + 1), '0' + (i + 1));
+    box.elt.open = i < 2;                         // text 3 — за кількістю контурів
+
+    // repeat і space ln: текстові кнопки, вимкнена — закреслена
+    const rf = row(box, '');
+    const rep = toggleButton(rf, 'repeat', board().repeat[i], v => {
+      board().repeat[i] = v;
+      syncSpace(i);
+    }, 'flag');
+    const sp = toggleButton(rf, 'space ln', board().space[i] === 1, v => {
+      board().space[i] = v ? 1 : 0;
+    }, 'flag');
+
     const ta = createElement('textarea', d.text).parent(box);
     ta.input(() => { board().text[i] = ta.value(); });
     return {
       box: box,
+      rep: rep,
+      sp: sp,
       text: ta,
       x:   slider(box, 'offset x', -540, 540, d.x, 1, v => { board().x[i] = v; }),
     };
   });
+  syncText3();
+}
+
+// space ln діє лише з repeat, тож без нього кнопка приглушена
+function syncSpace(i) {
+  ui.s[i].sp.btn.elt.disabled = !board().repeat[i];
+}
+
+// text 3 розгорнутий, лише коли вибрано 3 контури
+function syncText3() {
+  if (ui.s) ui.s[2].box.elt.open = count === 3;
 }
 
 /* ---------- елементи ---------- */
@@ -227,10 +245,11 @@ function selectSeg(btns, i) {
   btns[i].addClass('on');
 }
 
-// одна кнопка вкл/викл; set(v) ставить стан ззовні (при переході між полотнами)
-function toggleButton(parent, label, start, onChange) {
+// одна кнопка вкл/викл; set(v) ставить стан ззовні (при переході між полотнами);
+// cls — вигляд: 'tgl' чип (типово) або 'flag' текст
+function toggleButton(parent, label, start, onChange, cls) {
   let on = start;
-  const b = createButton(label).class('tgl').parent(parent);
+  const b = createButton(label).class(cls || 'tgl').parent(parent);
   const paint = () => { on ? b.addClass('on') : b.removeClass('on'); };
   paint();
   b.mousePressed(() => {
@@ -241,10 +260,10 @@ function toggleButton(parent, label, start, onChange) {
   return { btn: b, set: v => { on = v; paint(); } };
 }
 
-// повзунок з підписом; onInput (необов'язковий) отримує нове значення;
+// повзунок з підписом у пігулці; onInput (необов'язковий) отримує нове значення;
 // setVal ставить значення ззовні разом із підписом
 function slider(parent, label, min, max, val, step, onInput) {
-  const r = row(parent, label);
+  const r = row(parent, label).addClass('pill');
   const s = createSlider(min, max, val, step).parent(r);
   const out = createSpan(String(val)).class('val').parent(r);
   s.input(() => {
@@ -255,9 +274,9 @@ function slider(parent, label, min, max, val, step, onInput) {
   return s;
 }
 
-// повзунок + поле для ручного вводу; onChange (необов'язковий) отримує нове значення
+// повзунок + поле для ручного вводу в пігулці; onChange (необов'язковий) отримує нове значення
 function sliderNum(parent, label, lo, hi, val, step, onChange) {
-  const r = row(parent, label);
+  const r = row(parent, label).addClass('pill');
   const s = createSlider(lo, hi, val, step).parent(r);
   const inp = createInput(String(val), 'number').class('num').parent(r);
   inp.attribute('step', step);
@@ -283,10 +302,4 @@ function sliderNum(parent, label, lo, hi, val, step, onChange) {
     value: () => current,
     set: v => { current = v; s.value(v); inp.value(v); },
   };
-}
-
-function numField(parent, label, val) {
-  const r = row(parent, label);
-  const inp = createInput(String(val), 'number').parent(r);
-  return { value: () => Number(inp.value()) || 0 };
 }
